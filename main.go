@@ -41,11 +41,11 @@ func main() {
 		}
 
 		// Download ISO image
-		iso, err := download.NewFile(ctx, "latest-Ubuntu22-Jammy-Img", &download.FileArgs{
+		iso, err := download.NewFile(ctx, "latest-ubuntu22-jammy-iso", &download.FileArgs{
 			ContentType: pulumi.String("iso"),
 			DatastoreId: pulumi.String("local"),
 			NodeName:    pulumi.String("pve"),
-			Url:         pulumi.String("https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"),
+			Url:         pulumi.String("https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso"),
 		}, pulumi.Provider(provider))
 		if err != nil {
 			return err
@@ -54,34 +54,41 @@ func main() {
 		// Create a VM
 		newVM, err := vm.NewVirtualMachine(ctx, "vm", &vm.VirtualMachineArgs{
 			NodeName: pulumi.String("pve"),
-			Name:     pulumi.String("example-vm"),
+			Name:     pulumi.String("vm"),
 			Cpu: &vm.VirtualMachineCpuArgs{
 				Cores: pulumi.Int(2),
 			},
 			Memory: &vm.VirtualMachineMemoryArgs{
-				Floating: pulumi.Int(3200),
+				Dedicated: pulumi.Int(4800),
+				Floating:  pulumi.Int(4800),
 			},
 			Disks: &vm.VirtualMachineDiskArray{
 				vm.VirtualMachineDiskArgs{
-					Size:       pulumi.Int(30),
-					Interface:  pulumi.String("virtio0"),
+					Size:       pulumi.Int(25),
+					Interface:  pulumi.String("scsi0"),
+					Iothread:   pulumi.Bool(true),
 					FileFormat: pulumi.String("raw"),
-					FileId:     iso.ID(),
 				},
 			},
-			Initialization: vm.VirtualMachineInitializationArgs{
-				UserAccount: vm.VirtualMachineInitializationUserAccountArgs{
-					Username: pulumi.String("ubuntu"),
-					Password: pulumi.String("ubuntu"),
-				},
+			Cdrom: vm.VirtualMachineCdromArgs{
+				Enabled:   pulumi.Bool(true),
+				FileId:    iso.ID(),
+				Interface: pulumi.String("ide3"),
 			},
-			OperatingSystem: &vm.VirtualMachineOperatingSystemArgs{Type: pulumi.String("l26")},
-			NetworkDevices: &vm.VirtualMachineNetworkDeviceArray{
+			BootOrders: pulumi.StringArray{
+				pulumi.String("scsi0"),
+				pulumi.String("ide3"),
+				pulumi.String("net0"),
+			},
+			ScsiHardware:    pulumi.String("virtio-scsi-single"),
+			OperatingSystem: vm.VirtualMachineOperatingSystemArgs{Type: pulumi.String("l26")},
+			NetworkDevices: vm.VirtualMachineNetworkDeviceArray{
 				vm.VirtualMachineNetworkDeviceArgs{
 					Model:  pulumi.String("virtio"),
 					Bridge: pulumi.String("vmbr0"),
 				},
 			},
+			OnBoot: pulumi.Bool(true),
 		}, pulumi.DependsOn([]pulumi.Resource{iso}), pulumi.Provider(provider))
 		if err != nil {
 			return err
