@@ -55,6 +55,9 @@ func main() {
 		newVM, err := vm.NewVirtualMachine(ctx, "vm", &vm.VirtualMachineArgs{
 			NodeName: pulumi.String("pve"),
 			Name:     pulumi.String("vm"),
+			Agent: vm.VirtualMachineAgentArgs{
+				Enabled: pulumi.Bool(true),
+			},
 			Cpu: &vm.VirtualMachineCpuArgs{
 				Cores: pulumi.Int(2),
 			},
@@ -94,7 +97,7 @@ func main() {
 			return err
 		}
 
-		// Export the VM and Container IDs
+		// Export the VM IDs
 		ctx.Export("vmId", newVM.ID())
 
 		return nil
