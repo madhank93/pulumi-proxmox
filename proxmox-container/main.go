@@ -60,7 +60,8 @@ func main() {
 				Type:           pulumi.String("ubuntu"),
 			},
 			Memory: &ct.ContainerMemoryArgs{
-				Dedicated: pulumi.Int(1024),
+				Dedicated: pulumi.Int(4096),
+				Swap:      pulumi.Int(4096),
 			},
 			Cpu: &ct.ContainerCpuArgs{
 				Cores: pulumi.Int(2),
