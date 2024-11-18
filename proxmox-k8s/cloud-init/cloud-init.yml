@@ -19,7 +19,7 @@ write_files:
       overlay
       br_netfilter
 
-  - path: /etc/netplan/99-custom.yaml
+  - path: /etc/netplan/00-installer-config.yaml
     permissions: '0600'
     content: |
       network:
@@ -27,11 +27,8 @@ write_files:
         ethernets:
           ens18:
             dhcp4: true
-            dhcp4-overrides:
-              use-domains: true
-            match:
-              macaddress: ${mac_address}
-            set-name: ens18
+            dhcp6: false
+            optional: true
             nameservers:
               addresses: [8.8.8.8, 8.8.4.4]
 
@@ -42,14 +39,9 @@ write_files:
       net.bridge.bridge-nf-call-ip6tables = 1
       net.ipv4.ip_forward                 = 1
 
-  - path: /tmp/install-nix.sh
-    content: |
-      #!/bin/bash
-      curl -L https://nixos.org/nix/install | sh -s -- --daemon --yes
-
 runcmd:
   # Set hostname
-  - hostnamectl set-hostname {hostname}
+  - hostnamectl set-hostname ${hostname}
 
   # Basic system setup
   - modprobe overlay
@@ -57,17 +49,18 @@ runcmd:
   - sysctl --system
   - systemctl restart systemd-timesyncd
   
-  # Initial network setup and DNS
-  - chmod 600 /etc/netplan/99-custom.yaml
+  # Network configuration
   - netplan generate
   - netplan apply
-  - sleep 10  # Wait for network to stabilize
   
-  # Verify network connectivity before proceeding
+  # Wait for network connectivity
   - |
-    until ping -c 1 8.8.8.8 >/dev/null 2>&1; do
-      echo "Waiting for network connectivity..."
-      sleep 2
+    count=0
+    max_attempts=30
+    until ping -c 1 8.8.8.8 >/dev/null 2>&1 || [ $count -eq $max_attempts ]; do
+      echo "Waiting for network connectivity... Attempt $count of $max_attempts"
+      sleep 5
+      count=$((count + 1))
     done
   
   # Update and install basic packages
@@ -95,38 +88,8 @@ runcmd:
   # Hold kubernetes packages
   - apt-mark hold kubelet kubeadm
   
-  # Configure static IP (only if DHCP IP is available)
-  - |
-    if ip addr show ens18 | grep -q "inet "; then
-      CURRENT_IP=$(ip addr show ens18 | grep "inet " | awk '{print $2}' | cut -d/ -f1)
-      GATEWAY=$(ip route | grep default | awk '{print $3}')
-      if [ ! -z "$CURRENT_IP" ] && [ ! -z "$GATEWAY" ]; then
-        cat > /etc/netplan/99-custom.yaml << EOF
-    network:
-      version: 2
-      ethernets:
-        ens18:
-          dhcp4: false
-          match:
-            macaddress: $(cat /sys/class/net/ens18/address)
-          set-name: ens18
-          addresses: 
-            - $CURRENT_IP/24
-          routes:
-            - to: default
-              via: $GATEWAY
-          nameservers:
-            addresses: [8.8.8.8, 8.8.4.4]
-    EOF
-        chmod 600 /etc/netplan/99-custom.yaml
-        netplan generate
-        netplan apply
-      fi
-    fi
-
   # Install Nix package manager
-  - chmod +x /tmp/install-nix.sh
-  - /tmp/install-nix.sh
+  - curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
   
   # Enable and start services
   - systemctl enable qemu-guest-agent
