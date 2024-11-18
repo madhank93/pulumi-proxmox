@@ -141,9 +141,9 @@ func main() {
 			Bridge:      "vmbr0",
 			ImageUrl:    "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
 			Nodes: []NodeConfig{
-				{Name: "k8s-controller", Role: "control", Cores: 4, Memory: 8192, DiskSize: 50},
-				{Name: "k8s-worker1", Role: "worker", Cores: 2, Memory: 4096, DiskSize: 40},
-				{Name: "k8s-worker2", Role: "worker", Cores: 2, Memory: 4096, DiskSize: 40},
+				{Name: "k8s-controller", Role: "control", Cores: 4, Memory: 8192, DiskSize: 20},
+				{Name: "k8s-worker1", Role: "worker", Cores: 2, Memory: 4096, DiskSize: 30},
+				{Name: "k8s-worker2", Role: "worker", Cores: 2, Memory: 4096, DiskSize: 30},
 			},
 		}
 
