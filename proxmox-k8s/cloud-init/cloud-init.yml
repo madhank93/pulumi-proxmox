@@ -1,0 +1,104 @@
+#cloud-config
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    passwd: $6$SP/vqykLkV9d05An$mJ/fEZ3gmfVvD1vwSJqxfjsK9z/bykIMbCZ/Hov.nt31e8h0XklDSE7ofw2YjPemVOSm14JdYoEfEzbxkFkY/1
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHDtJdQ12Q8pUUGM16V1Ko+es5LzuGT/0FGWWTmsKQxj madhankumaravelu93@gmail.com
+
+chpasswd:
+  list: |
+    ubuntu:$6$SP/vqykLkV9d05An$mJ/fEZ3gmfVvD1vwSJqxfjsK9z/bykIMbCZ/Hov.nt31e8h0XklDSE7ofw2YjPemVOSm14JdYoEfEzbxkFkY/1
+  expire: false
+
+write_files:
+  - path: /etc/modules-load.d/k8s.conf
+    permissions: '0644'
+    content: |
+      overlay
+      br_netfilter
+
+  - path: /etc/netplan/00-installer-config.yaml
+    permissions: '0600'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          ens18:
+            dhcp4: true
+            dhcp6: false
+            optional: true
+            nameservers:
+              addresses: [8.8.8.8, 8.8.4.4]
+
+  - path: /etc/sysctl.d/k8s.conf
+    permissions: '0644'
+    content: |
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward                 = 1
+
+runcmd:
+  # Set hostname
+  - hostnamectl set-hostname ${hostname}
+
+  # Basic system setup
+  - modprobe overlay
+  - modprobe br_netfilter
+  - sysctl --system
+  - systemctl restart systemd-timesyncd
+  
+  # Network configuration
+  - netplan generate
+  - netplan apply
+  
+  # Wait for network connectivity
+  - |
+    count=0
+    max_attempts=30
+    until ping -c 1 8.8.8.8 >/dev/null 2>&1 || [ $count -eq $max_attempts ]; do
+      echo "Waiting for network connectivity... Attempt $count of $max_attempts"
+      sleep 5
+      count=$((count + 1))
+    done
+  
+  # Update and install basic packages
+  - apt-get update
+  - apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+  
+  # Setup Kubernetes repository
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+  - echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' > /etc/apt/sources.list.d/kubernetes.list
+  
+  # Install packages
+  - apt-get update
+  - |
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+      wget \
+      vim \
+      net-tools \
+      qemu-guest-agent \
+      kubelet \
+      kubeadm \
+      kubectl \
+      containerd
+  
+  # Hold kubernetes packages
+  - apt-mark hold kubelet kubeadm
+  
+  # Install Nix package manager
+  - curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+  
+  # Enable and start services
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - systemctl enable kubelet
+  - systemctl start kubelet
+
+  # Set bash as the default shell
+  - chsh -s /bin/bash ubuntu
+
+package_update: true
+package_upgrade: true
