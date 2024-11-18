@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,18 +57,8 @@ func initializeProvider(ctx *pulumi.Context) (*proxmoxve.Provider, error) {
 	})
 }
 
-// creates a random MAC address
-func generateMAC() (string, error) {
-	mac := make([]byte, 6)
-	if _, err := rand.Read(mac); err != nil {
-		return "", err
-	}
-	mac[0] = (mac[0] | 0x02) & 0xfe
-	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]), nil
-}
-
 // generates and uploads cloud-init config
-func createCloudInit(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName, hostname, mac string) (*storage.File, error) {
+func createCloudInit(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName string, hostname string) (*storage.File, error) {
 	configPath := filepath.Join("cloud-init", "cloud-init.yml")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -78,8 +67,7 @@ func createCloudInit(ctx *pulumi.Context, provider *proxmoxve.Provider, nodeName
 
 	content := string(data)
 	replacements := map[string]string{
-		"${mac_address}": mac,
-		"${hostname}":    hostname,
+		"${hostname}": hostname,
 	}
 	for k, v := range replacements {
 		content = strings.ReplaceAll(content, k, v)
@@ -172,14 +160,8 @@ func main() {
 
 		for _, node := range config.Nodes {
 
-			// Generate MAC addresses
-			mac, err := generateMAC()
-			if err != nil {
-				return err
-			}
-
 			// Prepare cloud-init configs and upload
-			cloudInit, err := createCloudInit(ctx, provider, config.NodeName, node.Name, mac)
+			cloudInit, err := createCloudInit(ctx, provider, config.NodeName, node.Name)
 			if err != nil {
 				return err
 			}
