@@ -141,9 +141,12 @@ func main() {
 			Bridge:      "vmbr0",
 			ImageUrl:    "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
 			Nodes: []NodeConfig{
-				{Name: "k8s-controller", Role: "control", Cores: 4, Memory: 8192, DiskSize: 20},
-				{Name: "k8s-worker1", Role: "worker", Cores: 2, Memory: 4096, DiskSize: 30},
-				{Name: "k8s-worker2", Role: "worker", Cores: 2, Memory: 4096, DiskSize: 30},
+				{Name: "k8s-controller1", Role: "control", Cores: 2, Memory: 4096, DiskSize: 15},
+				{Name: "k8s-controller2", Role: "control", Cores: 2, Memory: 4096, DiskSize: 15},
+				{Name: "k8s-controller3", Role: "control", Cores: 2, Memory: 4096, DiskSize: 15},
+				{Name: "k8s-worker1", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 30},
+				{Name: "k8s-worker2", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 30},
+				{Name: "k8s-worker3", Role: "worker", Cores: 4, Memory: 8192, DiskSize: 30},
 			},
 		}
 
@@ -172,8 +175,11 @@ func main() {
 				return err
 			}
 
-			ctx.Export(node.Name+"-id", vm.ID())
-			ctx.Export(node.Name+"-ip", vm.Ipv4Addresses)
+			ctx.Export(node.Name, pulumi.Map{
+				"id": vm.ID(),
+				"ip": vm.Ipv4Addresses,
+			})
+
 		}
 
 		return nil
