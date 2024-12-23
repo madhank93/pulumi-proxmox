@@ -1,0 +1,51 @@
+all:
+  hosts:
+    k8s-controller1:
+      ansible_host: 192.168.1.76
+      ip: 192.168.1.76
+      access_ip: 192.168.1.76
+    k8s-controller2:
+      ansible_host: 192.168.1.75
+      ip: 192.168.1.75
+      access_ip: 192.168.1.75
+    k8s-controller3:
+      ansible_host: 192.168.1.204
+      ip: 192.168.1.204
+      access_ip: 192.168.1.204
+    k8s-worker1:
+      ansible_host: 192.168.1.72
+      ip: 192.168.1.72
+      access_ip: 192.168.1.72
+    k8s-worker2:
+      ansible_host: 192.168.1.73
+      ip: 192.168.1.73
+      access_ip: 192.168.1.73
+    k8s-worker3:
+      ansible_host: 192.168.1.74
+      ip: 192.168.1.74
+      access_ip: 192.168.1.74
+  children:
+    kube_control_plane:
+      hosts:
+        k8s-controller1:
+        k8s-controller2:
+        k8s-controller3:
+    kube_node:
+      hosts:
+        k8s-controller1:
+        k8s-controller2:
+        k8s-controller3:
+        k8s-worker1:
+        k8s-worker2:
+        k8s-worker3:
+    etcd:
+      hosts:
+        k8s-controller1:
+        k8s-controller2:
+        k8s-controller3:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}

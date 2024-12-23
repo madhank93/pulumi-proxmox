@@ -1,0 +1,4 @@
+kubespray/
+kubespray-venv/
+*credentials
+*DS_Store
