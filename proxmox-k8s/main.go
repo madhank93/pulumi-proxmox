@@ -95,7 +95,16 @@ func createVM(ctx *pulumi.Context, provider *proxmoxve.Provider, config NodeConf
 		Cpu:      &vm.VirtualMachineCpuArgs{Cores: pulumi.Int(config.Cores)},
 		Memory: &vm.VirtualMachineMemoryArgs{
 			Dedicated: pulumi.Int(config.Memory),
-			Floating:  pulumi.Int(config.Memory),
+			Floating:  pulumi.Int(0),
+		},
+		Bios:    pulumi.String("ovmf"),
+		Machine: pulumi.String("q35"),
+		Hostpcis: vm.VirtualMachineHostpciArray{
+			vm.VirtualMachineHostpciArgs{
+				Device: pulumi.String("hostpci0"),
+				Pcie:   pulumi.Bool(true),
+				Id:     pulumi.String("0000:17:00.0"),
+			},
 		},
 		Disks: &vm.VirtualMachineDiskArray{
 			vm.VirtualMachineDiskArgs{
